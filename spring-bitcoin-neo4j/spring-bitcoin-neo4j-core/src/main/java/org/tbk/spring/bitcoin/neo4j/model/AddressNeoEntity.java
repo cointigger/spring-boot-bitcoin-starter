@@ -2,10 +2,10 @@ package org.tbk.spring.bitcoin.neo4j.model;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.NodeEntity;
-import org.neo4j.ogm.annotation.Properties;
-import org.neo4j.ogm.annotation.Relationship;
+import org.springframework.data.neo4j.core.schema.CompositeProperty;
+import org.springframework.data.neo4j.core.schema.Id;
+import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Relationship;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,15 +14,15 @@ import java.util.Map;
 
 @Data
 @EqualsAndHashCode(of = "address")
-@NodeEntity("addr")
+@Node("addr")
 public class AddressNeoEntity {
 
     @Id
     private String address;
 
-    @Relationship(type = "ADDRESS", direction = "INCOMING")
-    private List<TxOutputNeoEntity> outputs;
+    @Relationship(type = "ADDRESS", direction = Relationship.Direction.INCOMING)
+    private List<OutNeoRel> outputs;
 
-    @Properties(prefix = "meta")
+    @CompositeProperty(prefix = "meta")
     private Map<String, Object> meta = new HashMap<>();
 }

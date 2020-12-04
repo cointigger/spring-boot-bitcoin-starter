@@ -24,6 +24,7 @@ import org.tbk.bitcoin.common.bitcoinj.util.MoreScripts;
 import org.tbk.bitcoin.common.util.ShutdownHooks;
 import org.tbk.bitcoin.jsonrpc.cache.CacheFacade;
 import org.tbk.bitcoin.txstats.example.cache.AppCacheFacade;
+import org.tbk.bitcoin.txstats.example.model.ScoresNeoRel;
 import org.tbk.bitcoin.txstats.example.model.TxScoreNeoEntity;
 import org.tbk.bitcoin.txstats.example.model.TxScoreNeoRepository;
 import org.tbk.bitcoin.txstats.example.score.TxScoreRunner;
@@ -146,8 +147,13 @@ public class BitcoinTxStatsExampleApplication {
                 neoBlock.setDifficulty(block.getDifficultyTarget());
                 neoBlock.setNonce(block.getNonce());
 
+
                 blockRepository.findById(block.getPrevBlockHash().toString())
-                        .ifPresent(neoBlock::setPrevblock);
+                        .map(it -> {
+                            BlockNeoRel blockNeoRel = new BlockNeoRel();
+                            blockNeoRel.setBlock(it);
+                            return blockNeoRel;
+                        }).ifPresent(neoBlock::setPrevblock);
 
                 return neoBlock;
             };
@@ -180,7 +186,10 @@ public class BitcoinTxStatsExampleApplication {
                     neoTx.setTxincount(tx.getInputs().size());
                     neoTx.setTxoutcount(tx.getOutputs().size());
                     neoTx.setLocktime(tx.getLockTime());
-                    neoTx.setBlock(savedNeoBlock);
+
+                    IncludedInNeoRel includedInNeoRel = new IncludedInNeoRel();
+                    includedInNeoRel.setBlock(savedNeoBlock);
+                    neoTx.setBlock(includedInNeoRel);
 
                     List<TxOutputNeoEntity> neoSpentOutputs = Lists.newArrayList();
                     tx.getInputs().forEach(input -> {
@@ -222,13 +231,15 @@ public class BitcoinTxStatsExampleApplication {
 
                             Optional<Address> addressOrEmpty = MoreScripts.extractAddress(networkParameters, output.getScriptPubKey());
                             addressOrEmpty.ifPresent(address -> {
-                                AddressNeoEntity AddressNeoEntity = addressRepository.findById(address.toString()).orElseGet(() -> {
+                                AddressNeoEntity addressNeoEntity = addressRepository.findById(address.toString()).orElseGet(() -> {
                                     AddressNeoEntity newAddressNeoEntity = new AddressNeoEntity();
                                     newAddressNeoEntity.setAddress(address.toString());
                                     return addressRepository.save(newAddressNeoEntity);
                                 });
 
-                                neoTxo.setAddress(AddressNeoEntity);
+                                AddressNeoRel addressNeoRel = new AddressNeoRel();
+                                addressNeoRel.setAddress(addressNeoEntity);
+                                neoTxo.setAddress(addressNeoRel);
                             });
 
                             return txOutputRepository.save(neoTxo);
@@ -243,9 +254,12 @@ public class BitcoinTxStatsExampleApplication {
                         neoTxo.setId(txId + ":" + output.getIndex());
                         neoTxo.setIndex(output.getIndex());
                         neoTxo.setValue(output.getValue().getValue());
-                        neoTxo.setCreatedIn(neoTx);
-                        neoTxo.setSize(output.getScriptBytes().length);
 
+                        InNeoRel inNeoRel = new InNeoRel();
+                        inNeoRel.setTransaction(neoTx);
+
+                        neoTxo.setCreatedIn(inNeoRel);
+                        neoTxo.setSize(output.getScriptBytes().length);
 
                         String scriptTypeName = Optional.ofNullable(output.getScriptPubKey())
                                 .map(Script::getScriptType)
@@ -266,21 +280,41 @@ public class BitcoinTxStatsExampleApplication {
 
                         Optional<Address> addressOrEmpty = MoreScripts.extractAddress(networkParameters, output.getScriptPubKey());
                         addressOrEmpty.ifPresent(address -> {
-                            AddressNeoEntity AddressNeoEntity = addressRepository.findById(address.toString()).orElseGet(() -> {
+                            AddressNeoEntity addressNeoEntity = addressRepository.findById(address.toString()).orElseGet(() -> {
                                 AddressNeoEntity newAddressNeoEntity = new AddressNeoEntity();
                                 newAddressNeoEntity.setAddress(address.toString());
                                 return addressRepository.save(newAddressNeoEntity);
                             });
 
-                            neoTxo.setAddress(AddressNeoEntity);
+                            AddressNeoRel addressNeoRel = new AddressNeoRel();
+                            addressNeoRel.setAddress(addressNeoEntity);
+
+                            neoTxo.setAddress(addressNeoRel);
                         });
 
                         TxOutputNeoEntity savedNeoTxo = txOutputRepository.save(neoTxo);
                         neoCreatedOutputs.add(savedNeoTxo);
                     });
 
-                    neoTx.setInputs(neoSpentOutputs);
-                    neoTx.setOutputs(neoCreatedOutputs);
+                    List<OutNeoRel> inputRels = neoSpentOutputs.stream()
+                            .map(it -> {
+                                OutNeoRel outNeoRel = new OutNeoRel();
+                                outNeoRel.setOutput(it);
+                                return outNeoRel;
+                            })
+                            .collect(Collectors.toList());
+
+
+                    List<OutNeoRel> outputRels = neoCreatedOutputs.stream()
+                            .map(it -> {
+                                OutNeoRel outNeoRel = new OutNeoRel();
+                                outNeoRel.setOutput(it);
+                                return outNeoRel;
+                            })
+                            .collect(Collectors.toList());
+
+                    neoTx.setInputs(inputRels);
+                    neoTx.setOutputs(outputRels);
 
                     Coin fee = Optional.of(tx)
                             .filter(val -> !val.isCoinBase())
@@ -332,9 +366,11 @@ public class BitcoinTxStatsExampleApplication {
                             neoTxScore.setType(score.getType().toString());
                             neoTxScore.setLabels(labels);
 
-                            transactionRepository.findById(txId).ifPresent(neoTx -> {
-                                neoTxScore.setTx(neoTx);
-                            });
+                            transactionRepository.findById(txId).map(it -> {
+                                ScoresNeoRel scoresNeoRel = new ScoresNeoRel();
+                                scoresNeoRel.setTarget(it);
+                                return scoresNeoRel;
+                            }).ifPresent(neoTxScore::setTx);
 
                             return txScoreNeoRepository.save(neoTxScore);
                         });

@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @SpringBootApplication
@@ -84,7 +85,11 @@ public class BitcoinNeo4jExampleApplication {
                 neoBlock.setNonce(block.getNonce());
 
                 blockRepository.findById(block.getPrevBlockHash().toString())
-                        .ifPresent(neoBlock::setPrevblock);
+                        .map(it -> {
+                            BlockNeoRel blockNeoRel = new BlockNeoRel();
+                            blockNeoRel.setBlock(it);
+                            return blockNeoRel;
+                        }).ifPresent(neoBlock::setPrevblock);
 
                 return neoBlock;
             };
@@ -114,7 +119,10 @@ public class BitcoinNeo4jExampleApplication {
                     neoTx.setTxincount(tx.getInputs().size());
                     neoTx.setTxoutcount(tx.getOutputs().size());
                     neoTx.setLocktime(tx.getLockTime());
-                    neoTx.setBlock(savedNeoBlock);
+
+                    IncludedInNeoRel includedInNeoRel = new IncludedInNeoRel();
+                    includedInNeoRel.setBlock(savedNeoBlock);
+                    neoTx.setBlock(includedInNeoRel);
 
                     List<TxOutputNeoEntity> neoSpentOutputs = Lists.newArrayList();
                     tx.getInputs().forEach(input -> {
@@ -139,13 +147,15 @@ public class BitcoinNeo4jExampleApplication {
 
                             Optional<Address> addressOrEmpty = MoreScripts.extractAddress(networkParameters, fromOutput.getScriptPubKey());
                             addressOrEmpty.ifPresent(address -> {
-                                AddressNeoEntity AddressNeoEntity = addressRepository.findById(address.toString()).orElseGet(() -> {
+                                AddressNeoEntity addressNeoEntity = addressRepository.findById(address.toString()).orElseGet(() -> {
                                     AddressNeoEntity newAddressNeoEntity = new AddressNeoEntity();
                                     newAddressNeoEntity.setAddress(address.toString());
                                     return addressRepository.save(newAddressNeoEntity);
                                 });
 
-                                neoTxo.setAddress(AddressNeoEntity);
+                                AddressNeoRel addressNeoRel = new AddressNeoRel();
+                                addressNeoRel.setAddress(addressNeoEntity);
+                                neoTxo.setAddress(addressNeoRel);
                             });
 
                             return txOutputRepository.save(neoTxo);
@@ -160,25 +170,48 @@ public class BitcoinNeo4jExampleApplication {
                         neoTxo.setId(txId + ":" + output.getIndex());
                         neoTxo.setIndex(output.getIndex());
                         neoTxo.setValue(output.getValue().getValue());
-                        neoTxo.setCreatedIn(neoTx);
+
+                        InNeoRel inNeoRel = new InNeoRel();
+                        inNeoRel.setTransaction(neoTx);
+
+                        neoTxo.setCreatedIn(inNeoRel);
                         neoTxo.setSize(output.getScriptBytes().length);
 
                         Optional<Address> addressOrEmpty = MoreScripts.extractAddress(networkParameters, output.getScriptPubKey());
                         addressOrEmpty.ifPresent(address -> {
-                            AddressNeoEntity AddressNeoEntity = addressRepository.findById(address.toString()).orElseGet(() -> {
+                            AddressNeoEntity addressNeoEntity = addressRepository.findById(address.toString()).orElseGet(() -> {
                                 AddressNeoEntity newAddressNeoEntity = new AddressNeoEntity();
                                 newAddressNeoEntity.setAddress(address.toString());
                                 return addressRepository.save(newAddressNeoEntity);
                             });
 
-                            neoTxo.setAddress(AddressNeoEntity);
+                            AddressNeoRel addressNeoRel = new AddressNeoRel();
+                            addressNeoRel.setAddress(addressNeoEntity);
+                            neoTxo.setAddress(addressNeoRel);
                         });
 
                         neoCreatedOutputs.add(txOutputRepository.save(neoTxo));
                     });
 
-                    neoTx.setInputs(neoSpentOutputs);
-                    neoTx.setOutputs(neoCreatedOutputs);
+                    List<OutNeoRel> inputRels = neoSpentOutputs.stream()
+                            .map(it -> {
+                                OutNeoRel outNeoRel = new OutNeoRel();
+                                outNeoRel.setOutput(it);
+                                return outNeoRel;
+                            })
+                            .collect(Collectors.toList());
+
+
+                    List<OutNeoRel> outputRels = neoCreatedOutputs.stream()
+                            .map(it -> {
+                                OutNeoRel outNeoRel = new OutNeoRel();
+                                outNeoRel.setOutput(it);
+                                return outNeoRel;
+                            })
+                            .collect(Collectors.toList());
+
+                    neoTx.setInputs(inputRels);
+                    neoTx.setOutputs(outputRels);
 
                     transactionRepository.save(neoTx);
                 });
@@ -220,7 +253,11 @@ public class BitcoinNeo4jExampleApplication {
                 neoBlock.setNonce(block.getNonce());
 
                 blockRepository.findById(block.getPrevBlockHash().toString())
-                        .ifPresent(neoBlock::setPrevblock);
+                        .map(it -> {
+                            BlockNeoRel blockNeoRel = new BlockNeoRel();
+                            blockNeoRel.setBlock(it);
+                            return blockNeoRel;
+                        }).ifPresent(neoBlock::setPrevblock);
 
                 return neoBlock;
             };
@@ -291,13 +328,15 @@ public class BitcoinNeo4jExampleApplication {
 
                                     Optional<Address> addressOrEmpty = MoreScripts.extractAddress(networkParameters, fromOutput.getScriptPubKey());
                                     addressOrEmpty.ifPresent(address -> {
-                                        AddressNeoEntity AddressNeoEntity = addressRepository.findById(address.toString()).orElseGet(() -> {
+                                        AddressNeoEntity addressNeoEntity = addressRepository.findById(address.toString()).orElseGet(() -> {
                                             AddressNeoEntity newAddressNeoEntity = new AddressNeoEntity();
                                             newAddressNeoEntity.setAddress(address.toString());
                                             return addressRepository.save(newAddressNeoEntity);
                                         });
 
-                                        neoTxo.setAddress(AddressNeoEntity);
+                                        AddressNeoRel addressNeoRel = new AddressNeoRel();
+                                        addressNeoRel.setAddress(addressNeoEntity);
+                                        neoTxo.setAddress(addressNeoRel);
                                     });
 
                                     return txOutputRepository.save(neoTxo);
@@ -312,25 +351,49 @@ public class BitcoinNeo4jExampleApplication {
                                 neoTxo.setId(txId + ":" + output.getIndex());
                                 neoTxo.setIndex(output.getIndex());
                                 neoTxo.setValue(output.getValue().getValue());
-                                neoTxo.setCreatedIn(neoTx);
+
+                                InNeoRel inNeoRel = new InNeoRel();
+                                inNeoRel.setTransaction(neoTx);
+
+                                neoTxo.setCreatedIn(inNeoRel);
+
                                 neoTxo.setSize(output.getScriptBytes().length);
 
                                 Optional<Address> addressOrEmpty = MoreScripts.extractAddress(networkParameters, output.getScriptPubKey());
                                 addressOrEmpty.ifPresent(address -> {
-                                    AddressNeoEntity AddressNeoEntity = addressRepository.findById(address.toString()).orElseGet(() -> {
+                                    AddressNeoEntity addressNeoEntity = addressRepository.findById(address.toString()).orElseGet(() -> {
                                         AddressNeoEntity newAddressNeoEntity = new AddressNeoEntity();
                                         newAddressNeoEntity.setAddress(address.toString());
                                         return addressRepository.save(newAddressNeoEntity);
                                     });
 
-                                    neoTxo.setAddress(AddressNeoEntity);
+                                    AddressNeoRel addressNeoRel = new AddressNeoRel();
+                                    addressNeoRel.setAddress(addressNeoEntity);
+                                    neoTxo.setAddress(addressNeoRel);
                                 });
 
                                 neoCreatedOutputs.add(txOutputRepository.save(neoTxo));
                             });
 
-                            neoTx.setInputs(neoSpentOutputs);
-                            neoTx.setOutputs(neoCreatedOutputs);
+                            List<OutNeoRel> inputRels = neoSpentOutputs.stream()
+                                    .map(it -> {
+                                        OutNeoRel outNeoRel = new OutNeoRel();
+                                        outNeoRel.setOutput(it);
+                                        return outNeoRel;
+                                    })
+                                    .collect(Collectors.toList());
+
+
+                            List<OutNeoRel> outputRels = neoCreatedOutputs.stream()
+                                    .map(it -> {
+                                        OutNeoRel outNeoRel = new OutNeoRel();
+                                        outNeoRel.setOutput(it);
+                                        return outNeoRel;
+                                    })
+                                    .collect(Collectors.toList());
+
+                            neoTx.setInputs(inputRels);
+                            neoTx.setOutputs(outputRels);
 
                             transactionRepository.save(neoTx);
                         });

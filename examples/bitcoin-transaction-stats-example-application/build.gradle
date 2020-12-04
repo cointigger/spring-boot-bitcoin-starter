@@ -35,6 +35,7 @@ dependencies {
 
     implementation "org.apache.httpcomponents:httpclient:${httpComponentsVersion}"
     implementation "org.apache.httpcomponents:httpcore:${httpComponentsVersion}"
+    implementation "org.apache.commons:commons-lang3:3.11"
 
     implementation 'org.zalando:jackson-datatype-money:1.2.0'
 

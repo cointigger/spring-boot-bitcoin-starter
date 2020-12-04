@@ -7,8 +7,8 @@ import org.springframework.data.neo4j.core.schema.TargetNode;
 
 @Data
 @RelationshipProperties
-public class OutNeoRel {
+public class BlockNeoRel {
 
     @TargetNode
-    private TxOutputNeoEntity output;
+    private BlockNeoEntity block;
 }

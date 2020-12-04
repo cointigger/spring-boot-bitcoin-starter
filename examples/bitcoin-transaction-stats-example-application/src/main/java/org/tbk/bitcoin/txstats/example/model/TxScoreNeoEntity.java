@@ -2,21 +2,23 @@ package org.tbk.bitcoin.txstats.example.model;
 
 import com.google.common.collect.Lists;
 import lombok.Data;
-import org.neo4j.ogm.annotation.*;
-import org.neo4j.ogm.annotation.typeconversion.DateString;
-import org.tbk.spring.bitcoin.neo4j.model.TxNeoEntity;
+import org.springframework.data.neo4j.core.schema.GeneratedValue;
+import org.springframework.data.neo4j.core.schema.Id;
+import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Relationship;
+import org.springframework.data.neo4j.core.support.DateString;
 
 import java.time.Instant;
 import java.util.List;
 
 @Data
-@NodeEntity("tx_score")
+@Node("tx_score")
 public class TxScoreNeoEntity {
     @Id
     @GeneratedValue
     private Long id;
 
-    @Required
+    // @Required
     @DateString
     private Instant createdAt;
 
@@ -24,13 +26,13 @@ public class TxScoreNeoEntity {
 
     private boolean finalized;
 
-    @Required
+    // @Required
     private String type;
 
     private List<String> labels = Lists.newArrayList();
 
-    @Required
-    @Relationship(type = "SCORES")
-    private TxNeoEntity tx;
+    // @Required
+    @Relationship(type = "SCORES", direction = Relationship.Direction.OUTGOING)
+    private ScoresNeoRel tx;
 }
 

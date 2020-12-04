@@ -2,8 +2,11 @@ package org.tbk.spring.bitcoin.neo4j.model;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.neo4j.ogm.annotation.*;
-import org.neo4j.ogm.annotation.typeconversion.DateString;
+import org.springframework.data.neo4j.core.schema.CompositeProperty;
+import org.springframework.data.neo4j.core.schema.Id;
+import org.springframework.data.neo4j.core.schema.Node;
+import org.springframework.data.neo4j.core.schema.Relationship;
+import org.springframework.data.neo4j.core.support.DateString;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -13,7 +16,7 @@ import java.util.Map;
 
 @Data
 @EqualsAndHashCode(of = "hash")
-@NodeEntity("block")
+@Node("block")
 public class BlockNeoEntity {
     @Id
     private String hash;
@@ -26,13 +29,13 @@ public class BlockNeoEntity {
     /**
      * The reference to a Merkle tree collection which is a hash of all transactions related to this block
      */
-    @Required
+    // @NonNull
     private String merkleroot;
 
     /**
      * A Unix timestamp recording when this block was created (Currently limited to dates before the year 2106!)
      */
-    @Required
+    // @NonNull
     @DateString
     private Instant time;
 
@@ -46,19 +49,19 @@ public class BlockNeoEntity {
      */
     private long nonce;
 
-    @Properties(prefix = "meta")
+    @CompositeProperty(prefix = "meta")
     private Map<String, Object> meta = new HashMap<>();
 
     /**
      * The hash value of the previous block this particular block references
      */
-    @Relationship(type = "PREV_BLOCK")
-    private BlockNeoEntity prevblock;
+    @Relationship(type = "PREV_BLOCK", direction = Relationship.Direction.OUTGOING)
+    private BlockNeoRel prevblock;
 
-    @Relationship(type = "BASED_ON", direction = "INCOMING")
-    private BlockNeoEntity nextblock;
+    @Relationship(type = "BASED_ON", direction = Relationship.Direction.INCOMING)
+    private BlockNeoRel nextblock;
 
-    @Relationship(type = "INCLUDED_IN", direction = "INCOMING")
+    @Relationship(type = "INCLUDED_IN", direction = Relationship.Direction.INCOMING)
     private List<TxNeoEntity> transactions = new ArrayList<>();
 }
 

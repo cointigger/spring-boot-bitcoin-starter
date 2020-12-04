@@ -25,10 +25,11 @@ logging.level.si.mazi.rescu.ResponseReader: ERROR
 # prevent "Using default formatter for toString()." INFO logging
 logging.level.org.javamoney.moneta.Money: WARN
 
-spring.data.neo4j:
+spring.neo4j:
   uri: bolt://localhost:7687
-  username: neo4j
-  password: correct horse battery staple
+  authentication:
+    username: neo4j
+    password: correct horse battery staple
 
 org.tbk.spring.testcontainer.neo4j:
   enabled: true
